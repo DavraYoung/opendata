@@ -34,7 +34,9 @@
                  [ring/ring-core "1.7.1"]
                  [ring/ring-defaults "0.3.2"]
                  [selmer "1.12.4"]
-                 [morse "0.4.0"]]
+                 [honeysql "0.9.4"]
+                 [nilenso/honeysql-postgres "0.2.4"]
+                 [clj-time "0.15.0"]]
 
   :min-lein-version "2.0.0"
   
@@ -45,7 +47,6 @@
   :main ^:skip-aot opendata.core
 
   :plugins [[lein-immutant "2.1.0"]]
-
   :profiles
   {:uberjar {:omit-source true
              :aot :all

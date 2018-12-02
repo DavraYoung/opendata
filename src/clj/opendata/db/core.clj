@@ -6,14 +6,22 @@
     [conman.core :as conman]
     [java-time :as jt]
     [opendata.config :refer [env]]
-    [mount.core :refer [defstate]])
+    [mount.core :refer [defstate]]
+    [honeysql.core :as sql]
+    [opendata.query])
+
   (:import org.postgresql.util.PGobject
            java.sql.Array
            clojure.lang.IPersistentMap
            clojure.lang.IPersistentVector
            [java.sql
             BatchUpdateException
-            PreparedStatement]))
+            PreparedStatement]
+           (org.joda.time DateTime)
+           (java.util Date)
+           (java.time LocalTime LocalDate LocalDateTime ZonedDateTime)))
+
+
 (defstate ^:dynamic *db*
   :start (if-let [jdbc-url (env :database-url)]
            (conman/connect! {:jdbc-url jdbc-url})
@@ -21,8 +29,6 @@
              (log/warn "database connection URL was not found, please set :database-url in your config, e.g: dev-config.edn")
              *db*))
   :stop (conman/disconnect! *db*))
-
-(conman/bind-connection *db* "sql/queries.sql")
 
 
 (extend-protocol jdbc/IResultSetReadColumn
@@ -47,6 +53,7 @@
         "citext" (str value)
         value))))
 
+
 (defn to-pg-json [value]
   (doto (PGobject.)
     (.setType "jsonb")
@@ -62,20 +69,26 @@
         (.setObject stmt idx (.createArrayOf conn elem-type (to-array v)))
         (.setObject stmt idx (to-pg-json v))))))
 
+
+(extend-protocol cheshire.generate/JSONable
+  LocalDateTime
+  (to-json [dt gen]
+    (cheshire.generate/write-string gen (str dt))))
+
 (extend-protocol jdbc/ISQLValue
-    java.util.Date
+    Date
   (sql-value [v]
     (java.sql.Timestamp. (.getTime v)))
-  java.time.LocalTime
+  LocalTime
   (sql-value [v]
     (jt/sql-time v))
-  java.time.LocalDate
+  LocalDate
   (sql-value [v]
     (jt/sql-date v))
-  java.time.LocalDateTime
+  LocalDateTime
   (sql-value [v]
     (jt/sql-timestamp v))
-  java.time.ZonedDateTime
+  ZonedDateTime
   (sql-value [v]
     (jt/sql-timestamp v))
   IPersistentMap
@@ -83,3 +96,23 @@
   IPersistentVector
   (sql-value [value] (to-pg-json value)))
 
+(cheshire.generate/add-encoder
+  DateTime
+  (fn [^DateTime v g]
+    (.writeString g (clj-time.format/unparse (:date-time clj-time.format/formatters) v))))
+
+
+(defn query
+  ([sql-map]
+   (query sql-map nil))
+  ([sql-map row-fn]
+   (jdbc/query
+     *db*
+     (sql/format sql-map)
+     (when row-fn {:row-fn row-fn}))))
+
+
+(defn execute
+  [sql-map]
+  (jdbc/execute! *db*
+                 (sql/format sql-map)))

@@ -6,6 +6,7 @@
             [opendata.config :refer [env]]
             [clojure.tools.cli :refer [parse-opts]]
             [clojure.tools.logging :as log]
+            [opendata.db.core :refer [*db*]]
             [mount.core :as mount])
   (:gen-class))
 
