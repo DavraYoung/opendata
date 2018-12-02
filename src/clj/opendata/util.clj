@@ -66,7 +66,19 @@
 
 (defn coerce [obj]
   (-> obj
-      (select-keys [:crew_id :phone_number :password :name :ids :login :is_finished :on_call :id :user_id :location :created_at])
+      (select-keys [:crew_id
+                    :phone_number
+                    :password
+                    :name
+                    :ids
+                    :login
+                    :is_finished
+                    :on_call
+                    :id
+                    :user_id
+                    :location
+                    :created_at
+                    :telegram_id])
       (update+ :ids #(map to-int %))
       (update+ :id to-int)
       (update+ :user_id to-int)
@@ -75,4 +87,5 @@
       (update+ :location #(take 2 %))
       (update+ :created_at to-date)
       (update+ :chat_id to-int)
-      (update+ :log_msg_id to-int)))
+      (update+ :log_msg_id to-int)
+      (update+ :telegram_id to-int)))

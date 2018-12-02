@@ -36,7 +36,10 @@
                  [selmer "1.12.4"]
                  [honeysql "0.9.4"]
                  [nilenso/honeysql-postgres "0.2.4"]
-                 [clj-time "0.15.0"]]
+                 [clj-time "0.15.0"]
+                 [ring/ring-headers "0.3.0"]
+                 [ring/ring-anti-forgery "1.3.0"]
+                 [ring-cors "0.1.12"]]
 
   :min-lein-version "2.0.0"
   

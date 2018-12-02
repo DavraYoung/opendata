@@ -3,4 +3,5 @@ CREATE TABLE users
  telegram_id integer UNIQUE,
  location FLOAT[],
  phone_number VARCHAR(15),
- created_at timestamp with time zone DEFAULT NOW());
+ created_at timestamp with time zone DEFAULT NOW(),
+ loc_msg_id INTEGER);

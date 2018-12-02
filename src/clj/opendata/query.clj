@@ -105,85 +105,6 @@
     conditions))
 
 
-(defn where-tenant
-  [sql-map {:keys [ids key username password]}]
-  (-> sql-map
-      (merge-where (when (some? ids) [:uuid-in :id ids]))
-      (merge-where (when (some? key) [:= :key key]))
-      (merge-where (when (some? username) [:= :name username]))
-      (merge-where (when (some? password) [:= :password password]))))
-
-
-(defn select-tenant
-  ([filter]
-   (select-tenant filter nil))
-  ([filter pagination]
-   (-> (select :*)
-       (from :tenant)
-       (where-tenant filter)
-       (order-by :name)
-       (apply-pagination pagination))))
-
-
-(defn update-tenant
-  [tenant]
-  (-> (update :tenant)
-      (sset tenant)
-      (where [:= :id (:id tenant)])
-      (returning :*)))
-
-
-(defn update-balance
-  [id diff]
-  (-> (update :tenant)
-      (sset {:balance (sql/call :+ :balance diff)})
-      (where [:= :id id])
-      (returning :*)))
-
-
-(defn where-refill
-  [sql-map {:keys [ids tenant_ids created_at amount description]}]
-  (-> sql-map
-      (merge-where (when (some? ids) [:uuid-in :refill.id ids]))
-      (merge-where (when (some? tenant_ids) [:uuid-in :refill.tenant_id tenant_ids]))
-      (merge-where (when (some? (:gt created_at)) [:> :refill.created_at (:gt created_at)]))
-      (merge-where (when (some? (:lt created_at)) [:< :refill.created_at (:lt created_at)]))
-      (merge-where (when (some? (:gte created_at)) [:>= :refill.created_at (:gte created_at)]))
-      (merge-where (when (some? (:lte created_at)) [:<= :refill.created_at (:lte created_at)]))
-      (merge-where (when (some? (:gt amount)) [:> :refill.amount (:gt amount)]))
-      (merge-where (when (some? (:lt amount)) [:< :refill.amount (:lt amount)]))
-      (merge-where (when (some? (:gte amount)) [:>= :refill.amount (:gte amount)]))
-      (merge-where (when (some? (:lte amount)) [:<= :refill.amount (:lte amount)]))
-      (merge-where (when (some? (:like description)) [:like :refill.description (:like description)]))
-      (merge-where (when (some? (:not-like description)) [:not-like :refill.description (:not-like description)]))))
-
-
-(defn select-refill
-  ([filter]
-   (select-refill filter nil))
-  ([filter pagination]
-   (-> (select :refill.* :tenant.name)
-       (from :refill)
-       (where-refill filter)
-       (order-by [:created_at :desc])
-       (apply-pagination pagination)
-       (left-join :tenant [:= :refill.tenant_id :tenant.id]))))
-
-
-(defn insert-crew
-  [crew]
-  (-> (insert-into :crew)
-      (values [crew])))
-
-
-(defn update-refill
-  [refill]
-  (-> (update :refill)
-      (sset refill)
-      (where [:= :id (:id refill)])
-      (returning :*)))
-
-
 (defn where-user
   [sql-map {:keys [ids id telegram_id location phone_number]}]
   (-> sql-map
@@ -272,28 +193,30 @@
 (defn insert-user
   [user]
   (-> (insert-into :users)
-      (values [user])
-      (returning :*)))
+      (values [user])))
 
 
-(defn insert-dispather
-  [payment]
-  (let [payment (-> payment
-                    (update+ :receipt raw-value)
-                    (update+ :client raw-value))]
-    (-> (insert-into :payment)
-        (values [payment])
-        (returning :*))))
+(defn insert-dispatcher
+  [dispatcher]
+  (-> (insert-into :dispatcher)
+      (values [dispatcher])))
+
+(defn insert-call
+  [call]
+  (-> (insert-into :call)
+      (values [call])))
+
+(defn insert-crew
+  [crew]
+  (-> (insert-into :crew)
+      (values [crew])))
 
 
-(defn insert-credit
-  [credit]
-  (-> (insert-into :credit)
-      (values [credit])
-      (on-conflict :id)
-      (do-update-set* (keys (dissoc credit :id)))
-      (returning :*)))
-
+(defn update-dispatcher
+  [crew]
+  (-> (update :crew)
+      (sset crew)
+      (where [:= :id (:id crew)])))
 
 (defn update-crew
   [crew]
@@ -305,15 +228,13 @@
   [call]
   (-> (update :call)
       (sset call)
-      (where [:= :id (:id call)])
-      (returning :*)))
+      (where [:= :id (:id call)])))
 
 (defn update-user
   [user]
-  (-> (update :user)
+  (-> (update :users)
       (sset user)
-      (where [:= :id (:id user)])
-      (returning :*)))
+      (where [:= :id (:id user)])))
 
 (defn update-dispatcher
   [dispatcher]
@@ -323,43 +244,6 @@
       (returning :*)))
 
 
-(comment
-
-  (defn insert-payment
-    [payment]
-    (let [payment (-> payment
-                      (update+ :receipt raw-value)
-                      (update+ :client raw-value))]
-      (-> (insert-into :payment)
-          (values [payment])
-          (returning :*))))
 
 
-  (defn update-payment
-    [payment]
-    (let [payment (-> payment
-                      (update+ :receipt raw-value)
-                      (update+ :checked_receipt raw-value)
-                      (update+ :client raw-value))]
-      (-> (update :payment)
-          (sset payment)
-          (where [:= :id (:id payment)])
-          (returning :*))))
-
-
-  (defn update-tenant-credit
-    [id diff]
-    (-> (update :tenant)
-        (sset {:credit (sql/call :+ :credit diff)})
-        (where [:= :id id])
-        (returning :*)))
-
-
-
-  (defn update-credit
-    [credit]
-    (-> (update :credit)
-        (sset credit)
-        (where [:= :id (:id credit)])
-        (returning :*))))
 

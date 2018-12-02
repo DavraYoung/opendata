@@ -8,7 +8,8 @@
             [opendata.query :as query]
             [opendata.db.core :as db]
             [opendata.util :as util]
-            [compojure.api.exception :as ex]))
+            [compojure.api.exception :as ex]
+            [honeysql.core :as sql]))
 
 (defn access-error [_ _]
   (unauthorized {:error "unauthorized"}))
@@ -37,18 +38,52 @@
 
     (GET "/user" []
       :summary "returns array of crews"
-      :query-params [{ids :- [String] nil}
-                     {id :- String nil}
-                     {name :- String nil}
-                     {on_call :- Boolean false}
-                     {location :- [String] 0.0}
-                     {phone_number :- String "123"}
-                     {created_at :- String "2018-12-02T07:11:26.341"} :as req]
+      :query-params [{id :- String nil}
+                     {telegram_id :- String nil}
+                     {location :- [String] nil}
+                     {phone_number :- String nil}
+                     {created_at :- String nil} :as req]
       (ok (-> req
               (util/coerce)
-              (query/select-crews)
+              (query/select-users)
               (db/query))))
 
+
+    (GET "/user/:id" [id]
+      :summary "return user"
+      (ok (if-let [crew (->
+                          (util/coerce {:id id})
+                          (query/select-users)
+                          (db/query)
+                          (first))]
+            crew
+            (ring.util.response/not-found {}))))
+
+    (POST "/user/:id" [id]
+      :query-params [{telegram_id :- String nil}
+                     {location :- [String] nil}
+                     {phone_number :- String nil}
+                     {created_at :- String nil} :as req]
+      :summary "update user"
+      (if (->
+            (util/coerce (assoc req :id id))
+            (query/update-user)
+            (db/execute))
+        (ok {:result "ok"})
+        (ring.util.response/bad-request {})))
+
+    (PUT "/user/" []
+      :query-params [{telegram_id :- String nil}
+                     {location :- [String] nil}
+                     {phone_number :- String nil}
+                     {created_at :- String nil} :as req]
+      :summary "insert user"
+      (if (->
+            (util/coerce req)
+            (query/insert-user)
+            (db/execute))
+        (ok {:result "ok"})
+        (ring.util.response/bad-request {})))
 
     (GET "/crew" []
       :query-params [{ids :- [String] nil}
@@ -64,6 +99,45 @@
               (query/select-crews)
               (db/query))))
 
+    (POST "/crew/:id" [id]
+      :query-params [{name :- String nil}
+                     {on_call :- Boolean false}
+                     {created_at :- String nil}
+                     {chat_id :- String nil}
+                     {log_msg_id :- String nil}:as req]
+      :summary "update crew"
+      (if (->
+            (util/coerce (assoc req :id id))
+            (query/update-crew)
+            (db/execute))
+        (ok {:result "ok"})
+        (ring.util.response/bad-request {})))
+
+    (PUT "/crew/" []
+      :query-params [{name :- String nil}
+                     {on_call :- Boolean false}
+                     {created_at :- String nil}
+                     {chat_id :- String nil}
+                     {log_msg_id :- String nil}:as req]
+      :summary "insert crew"
+      (prn req)
+      (if (->
+            (util/coerce req)
+            (query/insert-crew)
+            (db/execute))
+        (ok {:result "ok"})
+        (ring.util.response/bad-request {})))
+
+
+    (GET "/crew/:id" [id]
+      :summary "return crew"
+      (ok (if-let [crew (->
+                          (util/coerce {:id id})
+                          (query/select-crews)
+                          (db/query)
+                          (first))]
+            crew
+            (ring.util.response/not-found {}))))
 
     (GET "/dispatcher" []
       :query-params [{ids :- [String] nil}
@@ -101,15 +175,32 @@
             crew
             (ring.util.response/not-found {}))))
 
-    (GET "/user/:id" [id]
-      :summary "return user"
-      (ok (if-let [crew (->
-                          (util/coerce {:id id})
-                          (query/select-users)
-                          (db/query)
-                          (first))]
-            crew
-            (ring.util.response/not-found {}))))
+
+    (POST "/call/:id" [id]
+      :query-params [{user_id :- String nil}
+                     {crew_id :- String nil}
+                     {is_finished :- Boolean nil}
+                     {created_at :- String nil}  :as req]
+      :summary "update call"
+      (if (->
+            (util/coerce (assoc req :id id))
+            (query/update-call)
+            (db/execute))
+        (ok {:result "ok"})
+        (ring.util.response/bad-request {})))
+
+    (PUT "/call/" []
+      :query-params [{user_id :- String nil}
+                     {crew_id :- String nil}
+                     {is_finished :- Boolean nil}
+                     {created_at :- String nil}  :as req]
+      :summary "insert call"
+      (if (->
+            (util/coerce req)
+            (query/insert-call)
+            (db/execute))
+        (ok {:result "ok"})
+        (ring.util.response/bad-request {})))
 
     (GET "/dispatcher/:id" [id]
       :summary "return dispatcher"
@@ -119,44 +210,4 @@
                                 (db/query)
                                 (first))]
             dispatcher
-            (ring.util.response/not-found {}))))
-
-    (GET "/crew/:id" [id]
-      :summary "return crew"
-      (ok (if-let [crew (->
-                          (util/coerce {:id id})
-                          (query/select-crews)
-                          (db/query)
-                          (first))]
-            crew
-            (ring.util.response/not-found {}))))
-
-
-    (POST "/crew/:id" [id]
-      :query-params [{user_id :- String nil}
-                     {crew_id :- String nil}
-                     {is_finished :- Boolean false}
-                     {created_at :- String nil}  :as req]
-      :summary "update crew"
-      (if (->
-            (util/coerce (assoc req :id id))
-            (query/update-crew)
-            (db/query))
-        (ok {:result "ok"})
-        (ring.util.response/bad-request {})))
-
-
-    (PUT "/crew/" []
-      :query-params [{name :- String nil}
-                     {on_call :- Boolean false}
-                     {created_at :- String nil}
-                     {chat_id :- String nil}
-                     {log_msg_id :- String nil}:as req]
-      :summary "insert crew"
-      (prn req)
-      (if (->
-            (util/coerce req)
-            (query/insert-crew)
-            (db/execute))
-        (ok {:result "ok"})
-        (ring.util.response/bad-request {})))))
+            (ring.util.response/not-found {}))))))

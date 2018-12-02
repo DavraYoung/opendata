@@ -15,9 +15,10 @@
             [buddy.auth.middleware :refer [wrap-authentication wrap-authorization]]
             [buddy.auth.accessrules :refer [restrict]]
             [buddy.auth :refer [authenticated?]]
-            [buddy.auth.backends.session :refer [session-backend]])
-  (:import 
-           [org.joda.time ReadableInstant]))
+            [buddy.auth.backends.session :refer [session-backend]]
+            [ring.middleware.cors :as cors])
+  (:import
+    [org.joda.time ReadableInstant]))
 
 (defn wrap-internal-error [handler]
   (fn [req]
@@ -25,8 +26,8 @@
       (handler req)
       (catch Throwable t
         (log/error t (.getMessage t))
-        (error-page {:status 500
-                     :title "Something very bad has happened!"
+        (error-page {:status  500
+                     :title   "Something very bad has happened!"
                      :message "We've dispatched a team of highly trained gnomes to take care of the problem."})))))
 
 (defn wrap-csrf [handler]
@@ -35,7 +36,7 @@
     {:error-response
      (error-page
        {:status 403
-        :title "Invalid anti-forgery token"})}))
+        :title  "Invalid anti-forgery token"})}))
 
 
 (defn wrap-formats [handler]
@@ -48,10 +49,10 @@
 (defn on-error [request response]
   (error-page
     {:status 403
-     :title (str "Access to " (:uri request) " is not authorized")}))
+     :title  (str "Access to " (:uri request) " is not authorized")}))
 
 (defn wrap-restricted [handler]
-  (restrict handler {:handler authenticated?
+  (restrict handler {:handler  authenticated?
                      :on-error on-error}))
 
 (defn wrap-auth [handler]
@@ -65,6 +66,8 @@
       wrap-auth
       wrap-webjars
       wrap-flash
+      (cors/wrap-cors :access-control-allow-origin [#".*"]
+                      :access-control-allow-methods [:get :put :post :delete])
       (wrap-session {:cookie-attrs {:http-only true}})
       (wrap-defaults
         (-> site-defaults
